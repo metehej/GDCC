@@ -8,3 +8,4 @@ Debugging part is the heart of the library and is supposed to be the heart of yo
 Control part takes all keyboard input and handles it. It allows movement across buttons, text entering, debug input etc.
 
 Its a rather simple library and i hope to make using it even simpler by time. Documentation pending, but code is commented.
+Started as a school project.
