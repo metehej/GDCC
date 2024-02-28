@@ -1,10 +1,48 @@
-﻿using System.Runtime.CompilerServices;
-using System.Threading.Channels;
-using System.Timers;
+﻿using System.Threading.Channels;
+using System.Drawing;
+using System.Text;
+using System.Security.Cryptography.X509Certificates;
+using System.Runtime.CompilerServices;
+using System.Data.Common;
 using static GraphicCore.Core;
 
-//TODO:
-//  rework buttons lines - input variable specifying if same size equally divided full size, same size specified size centered, same size specified size distributed thorough full size, margin size centered, margin size distributed thorough full size
+
+//IMPORTANT NOTICE
+// UTF-8 ENCODING REQUIRED FOR IMAGES
+//by default, movement is locked at first
+//to use buttons, user must set
+//
+//MovementLock = false;
+//
+//before entering the main program loop (so buttons work)
+//
+//Meant inicialization:
+//namespace YOUR_NAMESPACE
+//{
+//    class YOUR_CLASS
+//    {
+//        //Global variables
+//        static DisplayObject displayObject = new();
+//        static Channel<ConsoleKeyInfo> keyTunnel = Channel.CreateUnbounded<ConsoleKeyInfo>();
+//        static void Main(string[] args)
+//        {
+//            // Disable cursor
+//            Console.CursorVisible = false;
+//            // Starting the debugger
+//            Debugger debugger = new Debugger(SET UP YOUR VALUES, CONSTRUCTOR DESCRIBED IN DEBUGGER CLASS);
+
+//            // Get references from debugger (if needed)
+//            keyTunnel = GraphicCore.Core.keyTunnel;
+//            displayObject = debugger.DisplayObject;
+
+//            // Display first frame
+//            _ = new FIRSTFRAME();
+//            // Unlock buttons (if needed)
+//            MovementLock = false;
+//            while (true) ;
+//        }
+//    }
+//}
 
 namespace GraphicCore
 {
@@ -12,12 +50,12 @@ namespace GraphicCore
     {
         //global variables
         public static ConsoleColor Foreground, Background, ButtonFore, ButtonBack, HighFore, HighBack;
-        public static int PlannedWidth, PlannedHeight, MinWidth, MinHeight, Priorized;
+        public static int PlannedWidth, PlannedHeight, MinWidth, MinHeight, MaxWidth, MaxHeight, Priorized;
         public static string Frame = "";
         public static bool TextIn, MovementLock = true;
         public static int DebugPriority, PopUpPriority, MenuPriority;
         public static Button?[,] ButtonField = new Button[0,0];
-        static Dictionary<string, Action<DisplayObject, string>> DebugCommands = new()
+        static readonly Dictionary<string, Action<DisplayObject, string>> DebugCommands = new()
         {
             {"exit", (x,y) => { Environment.Exit(0); } },
             {"adjust", (x, y) => {/*WIP*/ } },
@@ -116,8 +154,9 @@ namespace GraphicCore
                 get { return displayObject; }
                 set { displayObject = value; }
             }
-            public Debugger(ConsoleColor foreground, ConsoleColor background, ConsoleColor buttonFore, ConsoleColor buttonBack, ConsoleColor highFore, ConsoleColor highBack, int minWidth, int minHeight, int priorized = int.MaxValue,int debugPriority = 0, int popUpPriority = 2, int menuPriority = 6)
+            public Debugger(ConsoleColor foreground, ConsoleColor background, ConsoleColor buttonFore, ConsoleColor buttonBack, ConsoleColor highFore, ConsoleColor highBack, int minWidth, int minHeight, int? maxWidth, int? maxHeight, int priorized = int.MaxValue,int debugPriority = 0, int popUpPriority = 2, int menuPriority = 6)
             {
+                Console.OutputEncoding = Encoding.UTF8;
                 displayObject = new DisplayObject();
                 Foreground = foreground;
                 Background = background;
@@ -127,6 +166,8 @@ namespace GraphicCore
                 HighBack = highBack;
                 PlannedWidth = MinWidth = minWidth;
                 PlannedHeight = MinHeight = minHeight;
+                MaxWidth = maxWidth ?? int.MaxValue;
+                MaxHeight = maxHeight ?? int.MaxValue;
                 Priorized = priorized;
                 keyTask = new Task(async () =>
                 {
@@ -336,85 +377,6 @@ namespace GraphicCore
                 }
             }
 
-            //public void Draw(int? frame = null)
-            //{
-            //    ClearOld(frame ?? -100);
-            //    frameType = frame == null ? frameType : frame.Value;
-            //    try
-            //    {
-            //        switch (frameType)
-            //        {
-            //            case 0:
-            //                if (menuData != null)
-            //                {
-            //                    menuData.Write();
-            //                    if (ButtonField[hlIndex.Item1, hlIndex.Item2] == null)
-            //                    {
-            //                        if (!FindIndex())
-            //                        {
-            //                            return;
-            //                        }
-            //                    }
-            //                    ButtonField[hlIndex.Item1, hlIndex.Item2].Highlight();
-            //                }
-            //                else
-            //                {
-            //                    throw new Exception("MenuData not initialized");
-            //                }
-            //                break;
-            //            case 2:
-            //                if (popupData != null)
-            //                {
-            //                    popupData.Write();
-            //                    if (popupData.buttons.Count != 0)
-            //                    {
-            //                        if (ButtonField[hlIndex.Item1, hlIndex.Item2] == null)
-            //                        {
-            //                            if (!FindIndex())
-            //                            {
-            //                                throw new Exception("No buttons in popup");
-            //                            }
-            //                        }
-            //                        ButtonField[hlIndex.Item1, hlIndex.Item2].Highlight();
-            //                    }
-            //                }
-            //                else
-            //                {
-            //                    throw new Exception("PopupData not initialized");
-            //                }
-            //                break;
-            //            case 3:
-            //                CleanFrame();
-            //                if (titleData != null)
-            //                {
-            //                    titleData.WriteTimed();
-            //                }
-            //                else
-            //                {
-            //                    throw new Exception("TitleData not initialized");
-            //                }
-            //                break;
-            //            case 4:
-            //                CleanFrame();
-            //                if (titleData != null)
-            //                {
-            //                    titleData.Write();
-            //                }
-            //                else
-            //                {
-            //                    throw new Exception("TitleData not initialized");
-            //                }
-            //                break;
-            //            default:
-            //                throw new Exception("Wrong or none frameType");
-            //        }
-            //    }
-            //    catch (Exception)
-            //    {
-            //        Console.Clear();
-            //    }
-            //}
-
             //Adjust screen
             public void Adjust() 
             {
@@ -439,7 +401,15 @@ namespace GraphicCore
                         new PosString("R", Console.CursorLeft, Console.CursorTop, null, ConsoleColor.Cyan).Write();
                         Console.Write(" to resize to your current window size.");
                         PlannedHeight = Console.WindowHeight < MinHeight ? MinHeight : Console.WindowHeight;
+                        if (PlannedHeight > MaxHeight)
+                        {
+                            PlannedHeight = MaxHeight;
+                        }
                         PlannedWidth = Console.WindowWidth < MinWidth ? MinWidth : Console.WindowWidth;
+                        if (PlannedWidth > MaxWidth)
+                        {
+                            PlannedWidth = MaxWidth;
+                        }
                         Frame = createFrame();
                         Thread.Sleep(250);
                     }
@@ -452,7 +422,15 @@ namespace GraphicCore
                     {
                         frameType = 0;
                         PlannedHeight = Console.WindowHeight < MinHeight ? MinHeight : Console.WindowHeight;
+                        if (PlannedHeight > MaxHeight)
+                        {
+                            PlannedHeight = MaxHeight;
+                        }
                         PlannedWidth = Console.WindowWidth < MinWidth ? MinWidth : Console.WindowWidth;
+                        if (PlannedWidth > MaxWidth)
+                        {
+                            PlannedWidth = MaxWidth;
+                        }
                         Frame = createFrame();
                         ButtonField = new Button[PlannedHeight, PlannedWidth];
                         break;
@@ -460,7 +438,15 @@ namespace GraphicCore
                     else if (pressedKey.Key == ConsoleKey.R)
                     {
                         PlannedHeight = Console.WindowHeight < MinHeight ? MinHeight : Console.WindowHeight;
+                        if (PlannedHeight > MaxHeight)
+                        {
+                            PlannedHeight = MaxHeight;
+                        }
                         PlannedWidth = Console.WindowWidth < MinWidth ? MinWidth : Console.WindowWidth;
+                        if (PlannedWidth > MaxWidth)
+                        {
+                            PlannedWidth = MaxWidth;
+                        }
                         Frame = createFrame();
                     }
                 }
@@ -636,7 +622,7 @@ namespace GraphicCore
                             throw e;
                     }
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
 
                     return hlIndex;
@@ -703,7 +689,7 @@ namespace GraphicCore
 
             public TitleData(string[] lines, int delay, ConsoleColor?[] fores, ConsoleColor?[] backs)
             {
-                content = new PosString[0];
+                content = Array.Empty<PosString>();
                 this.delay = delay;
                 int y = (PlannedHeight - lines.Length * 2 + 1) / 2;
                 if (fores == null) fores = new ConsoleColor?[0];
@@ -750,6 +736,26 @@ namespace GraphicCore
             public List<PosString> content = new();
             public List<Button> buttons;
             string type = "menu";
+
+            public PosString Header { get { return header; } set { 
+                    header = value;
+                    headerUnderline = new PosString(new string('-', header.content.Length), header.posx, header.posy + 1, null, header.Fore, header.Back);
+                } }
+            public PosString Title
+            {
+                get { return title; }
+                set { title = value; }
+            }
+            public List<PosString> Content
+            {
+                get { return content; }
+                set { content = value; }
+            }
+            public List<Button> Buttons
+            {
+                get { return buttons; }
+                set { buttons = value; }
+            }
             public string Type
             {
                 get { return type; }
@@ -769,7 +775,7 @@ namespace GraphicCore
                 this.buttons = buttons;
             }
 
-            public void Write()
+            public virtual void Write()
             {
                 CleanFrame();
                 header.Write();
@@ -803,6 +809,21 @@ namespace GraphicCore
                 {
                     x.Delete(clear);
                 }
+            }
+        }
+        public class AreYouSure
+        {
+            public AreYouSure(string message, Action action, DisplayObject displayObject)
+            {
+                Tuple<int, int> _position = CalculatePosition(22, 0, 0);
+                List<Button> buttons = new();
+                buttons.Add(new Button("Yes", _position.Item1 + 12, _position.Item2, 10, 0, (x) => { action(); }) { Fore = ConsoleColor.DarkGreen, HFore = ConsoleColor.White, HBack = ConsoleColor.DarkGreen });
+                buttons.Add(new Button("No", _position.Item1, _position.Item2, 10, 0, (x) => {
+                    displayObject.DrawOld();
+                })
+                { Fore = ConsoleColor.DarkRed, HFore = ConsoleColor.White, HBack = ConsoleColor.Red });
+                PopupData popupData = new PopupData("Are you sure?", message, null, buttons);
+                displayObject.DrawNewOver(popupData, false);
             }
         }
         // popup in front of other stuff
@@ -1121,6 +1142,8 @@ namespace GraphicCore
             }
             public abstract void Press();
         }
+        // Interface for all buttons - has click method
+
         // Button - has an bAction, can be highlighted, pressed
         public class Button : Element
         {
@@ -1254,7 +1277,7 @@ namespace GraphicCore
                 }
                 for (int i = 0; i < inButtons.Length; i++)
                 {
-                    res = res.Append(new Button(inButtons[i], posx, posy, buttonSize, 0, bActions[i], buttonFore, buttonBack)).ToArray();
+                    res = res.Append(new Button(inButtons[i], posx, posy + 2 * i, buttonSize, 0, bActions[i], buttonFore, buttonBack)).ToArray();
                     posx += buttonSize + spacing;
                 }
             }
@@ -1268,7 +1291,7 @@ namespace GraphicCore
                 }
                 for (int i = 0; i < inButtons.Length; i++)
                 {
-                    res = res.Append(new Button(inButtons[i], posx, posy, buttonSize, 0, bActions[i], buttonFore, buttonBack)).ToArray();
+                    res = res.Append(new Button(inButtons[i], posx, posy + 2 * i, buttonSize, 0, bActions[i], buttonFore, buttonBack)).ToArray();
                     posx += buttonSize + 1;
                 }
             }
@@ -1291,7 +1314,7 @@ namespace GraphicCore
                 }
                 for (int i = 0; i < inButtons.Length; i++)
                 {
-                    res = res.Append(new Button(inButtons[i], posx - buttonSize, posy, inButtons[i].Length, buttonMargin, bActions[i], buttonFore, buttonBack)).ToArray();
+                    res = res.Append(new Button(inButtons[i], posx - buttonSize, posy + 2 * i, inButtons[i].Length, buttonMargin, bActions[i], buttonFore, buttonBack)).ToArray();
                     buttonSize -= inButtons[i].Length + 2 * buttonMargin + 1;
                 }
             }
@@ -1354,7 +1377,9 @@ namespace GraphicCore
                 string result = content == " " ? "": content;
                 // Position - cursor in the field
                 // Index - first printed character from the string
+                int fieldSize = this.fieldSize;
                 int position = Math.Min(fieldSize, result.Length), index = Math.Max(0, result.Length - fieldSize);
+                fieldSize = fieldSize - 1 - maxLen.ToString().Length;
                 if (showFrame)
                 {
                     input = new PosString(result, posx + 2 + 3 * Math.Min(header.Length, 1) + header.Length, posy + 1, fieldSize, null, null, "left");
@@ -1363,11 +1388,13 @@ namespace GraphicCore
                 {
                     input = new PosString(result, posx + header.Length + Math.Min(header.Length, 1), posy, fieldSize);
                 }
+                PosString indicator = new("|" + StringFormat(maxLen.ToString(), maxLen.ToString().Length, "right"), input.posx + input.size, input.posy);
                 ConsoleKeyInfo pressedKey = new ConsoleKeyInfo();
                 TextIn = true;
                 Console.CursorVisible = true;
                 keyTunnel.Writer.WriteAsync(new ConsoleKeyInfo(((char)ConsoleKey.Tab), ConsoleKey.Tab, false, false, false));
                 input.Write();
+                indicator.Write();
                 while (pressedKey.Key != ConsoleKey.Enter || (input.content.Trim() == "" && !empty))
                 {
                     // Get the input
@@ -1400,7 +1427,7 @@ namespace GraphicCore
                                 position--;
                             }
                         }
-                        catch (Exception e)
+                        catch (Exception)
                         {
                             // presumed empty, do nothing
                         }
@@ -1412,7 +1439,7 @@ namespace GraphicCore
                         {
                             result = result.Remove(index + position, 1);
                         }
-                        catch (Exception e)
+                        catch (Exception)
                         {
                             // presumed nothing in front
                         }
@@ -1476,13 +1503,16 @@ namespace GraphicCore
                     }
                     // Display the input
                     input.content = StringFormat(result.Substring(index, Math.Min(fieldSize, result.Length - index)), fieldSize, "left");
+                    indicator.content = "|" + StringFormat((maxLen - result.Length).ToString(), maxLen.ToString().Length, "right");
                     if (result.Length == maxLen)
                     {
                         input.Write(ConsoleColor.Black, ConsoleColor.DarkGray);
+                        indicator.Write(ConsoleColor.Black, ConsoleColor.DarkGray);
                     }
                     else
                     {
                         input.Write(Fore, Back);
+                        indicator.Write(Fore, Back);
                     }
                 }
                 input.Write(Background, Background);
@@ -1494,6 +1524,196 @@ namespace GraphicCore
                 }
                 if(result == "") result = " ";
                 return result;
+            }
+        }
+        public class PosImage
+        {
+            int posx, posy, sizex, sizey;
+            public string[] content;
+            bool transparent;
+            ConsoleColor? fore, back;
+            public ConsoleColor Fore
+            {
+                get { return fore == null ? Foreground : fore.Value; }
+                set { fore = value; }
+            }
+            public ConsoleColor Back
+            {
+                get { return back == null ? Background : back.Value; }
+                set { back = value; }
+            }
+            public int Posx
+            {
+                get { return posx; }
+                set { posx = value; }
+            }
+            public int Posy
+            {
+                get { return posy; }
+                set { posy = value; }
+            }
+            public int Sizex
+            {
+                get { return sizex; }
+                set { sizex = value; }
+            }
+            public int Sizey
+            {
+                get { return sizey; }
+                set { sizey = value; }
+            }
+            public bool Transparent
+            {
+                get { return transparent; }
+                set { transparent = value; }
+            }
+            /// <summary>
+            /// Image object with its monochromatic color and position<br/>
+            /// Automatically cuts the image to fit the size of the field without changing the aspect ratio
+            /// </summary>
+            /// <param name="bitmap">Bitmap of the pitcture</param>
+            /// <param name="size">
+            /// Size of the character field - one character carries 2 width pixels and 4 height pixels <br/>
+            /// Please notice, say k is koeficient for changing size, then: <br/>
+            /// characters_width = k * bitmap_width <br/>
+            /// characters_height = k * bitmap_height / 2.25</param>
+            /// <param name="mode">"fill" = keep the whole box full, cut off edges<br/>"resize" = make small enough to fit whole while keeping all</param>
+            /// <param name="fore">Foreground color (Foreground by default)</param>
+            /// <param name="back">Background color (Background by default)</param>
+            public PosImage(Bitmap bitmap, Size size, string mode = "fill", ConsoleColor? fore = null, ConsoleColor? back = null)
+            {
+                transparent = false;
+                this.fore = fore;
+                this.back = back;
+                int pHeight = size.Height * 4;
+                int pWidth = size.Width * 2;
+                if(mode == "fill")
+                {
+                    // Compare aspect ratio, resize as needed
+                    if ((double)pWidth / pHeight > (double)bitmap.Width / bitmap.Height)
+                    {
+                        //original has a taller aspect ratio
+                        //cut off height, keep width
+                        double newWidth = bitmap.Width;
+                        int newHeight = (int)Math.Floor(newWidth * pHeight / pWidth);
+                        bitmap = new Bitmap(bitmap.Clone(new Rectangle(0, (bitmap.Height - newHeight) / 2, (int)newWidth, newHeight), bitmap.PixelFormat), new Size((int)(newWidth), newHeight));
+                    }
+                    else if ((double)pWidth / pHeight < (double)bitmap.Width / bitmap.Height)
+                    {
+                        //original has a wider aspect ratio
+                        double newHeight = bitmap.Height;
+                        int newWidth = (int)Math.Floor(newHeight * pWidth / pHeight);
+                        bitmap = new Bitmap(bitmap.Clone(new Rectangle((bitmap.Width - newWidth) / 2, (bitmap.Height - (int)newHeight) / 2, newWidth, (int)newHeight), bitmap.PixelFormat), new Size((int)(newWidth), (int)newHeight));
+                    }
+                } else if (mode == "resize")
+                {
+                    // Compare aspect ratio, resize as needed
+                    if ((double)pWidth / pHeight > (double)bitmap.Width / bitmap.Height)
+                    {
+                        //original has a taller aspect ratio
+                        Bitmap shrunk = new Bitmap(pWidth, pHeight);
+                        int newWidth = (int)Math.Floor((double)pHeight * bitmap.Width / bitmap.Height);
+                        bitmap = new Bitmap(bitmap, new Size(newWidth, pHeight));
+                        using (Graphics g = Graphics.FromImage(shrunk))
+                        {
+                            g.FillRectangle(Brushes.Black,0, 0, pWidth, pHeight);
+                            g.DrawImage(bitmap, (pWidth-newWidth)/2, 0);
+                        }
+                        bitmap = new Bitmap(shrunk);
+                        shrunk.Dispose();
+                    }
+                    else if ((double)pWidth / pHeight < (double)bitmap.Width / bitmap.Height)
+                    {
+                        //original has a wider aspect ratio
+                        Bitmap shrunk = new Bitmap(pWidth, pHeight);
+                        int newHeight = (int)Math.Floor((double)pWidth * bitmap.Height / bitmap.Width);
+                        bitmap = new Bitmap(bitmap, new Size(pWidth, newHeight));
+                        using (Graphics g = Graphics.FromImage(shrunk))
+                        {
+                            g.FillRectangle(Brushes.Black, 0, 0, pWidth, pHeight);
+                            g.DrawImage(bitmap, 0, (pHeight - newHeight)/2);
+                        }
+                        bitmap = new Bitmap(shrunk);
+                        shrunk.Dispose();
+                    }
+                }
+                sizex = size.Width;
+                sizey = size.Height;
+                // Resize bitmap to correct size
+                bitmap = new Bitmap(bitmap, new Size(size.Width*2, size.Height*4));
+                using (bitmap)
+                {
+                    string[] result = new string[sizey];
+                    string temp = "";
+                    int[] values = [0x1, 0x8, 0x2, 0x10, 0x4, 0x20, 0x40, 0x80];
+                    int[] ints = new int[8];
+                    for (int y = 0; y < bitmap.Height; y+=4)
+                    {
+                        for (int x = 0; x < bitmap.Width; x+=2)
+                        {
+                            //adding value for each of the pixels
+                            for (int i = 0; i < 4; i++)
+                            {
+                                for (int j = 0; j < 2; j++)
+                                {
+                                    ints[2 * i + j] = Convert.ToInt32(Math.Round(bitmap.GetPixel(x + j, y + i).GetBrightness(), 0));
+                                }
+                            }
+                            //adding the values together
+                            temp += char.ConvertFromUtf32((byte)(ints[0] * values[0] + ints[1] * values[1] + ints[2] * values[2] + ints[3] * values[3] + ints[4] * values[4] + ints[5] * values[5] + ints[6] * values[6] + ints[7] * values[7]) + 0x2800);
+                        }
+                        result[y/4] = temp;
+                        temp = "";
+                    }
+                    content = result;
+                }
+                bitmap.Dispose();
+            }
+            public PosImage Write(ConsoleColor? fore = null, ConsoleColor? back= null)
+            {
+                CursorPosition(posx, posy);
+                Console.ForegroundColor = fore == null ? Fore : fore.Value;
+                Console.BackgroundColor = back == null ? Back : back.Value;
+                if(transparent)
+                {
+                    foreach (string line in content)
+                    {
+                        foreach(char c in line)
+                        {
+                            if(c != '⠀')
+                            {
+                                Console.Write(c);
+                            } else
+                            {
+                                CursorPosition(Console.CursorLeft+1, Console.CursorTop);
+                            }
+                        }
+                        CursorPosition(posx, Console.CursorTop + 1);
+                    }
+                } else
+                {
+                    foreach (string line in content)
+                    {
+                        Console.Write(line);
+                        CursorPosition(posx, Console.CursorTop + 1);
+                    }
+                }
+                Console.ForegroundColor = Foreground;
+                Console.BackgroundColor = Background;
+                return this;
+            }
+            public PosImage Delete(ConsoleColor? fore = null)
+            {
+                CursorPosition(posx, posy);
+                Console.ForegroundColor = fore == null ? Background : fore.Value;
+                Console.BackgroundColor = fore == null ? Background : fore.Value;
+                foreach (string line in content)
+                {
+                    Console.WriteLine(line);
+                }
+                Console.ForegroundColor = Foreground;
+                Console.BackgroundColor = Background;
+                return this;
             }
         }
         #endregion
